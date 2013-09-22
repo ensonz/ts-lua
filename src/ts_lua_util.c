@@ -48,8 +48,10 @@ ts_lua_destroy_vm(ts_lua_main_ctx *arr, int n)
     for (i = 0; i < n; i++) {
 
         L = arr[i].lua;
-        if (L)
+
+        if (L) {
             lua_close(L);
+        }
     }
 
     return;
@@ -83,6 +85,8 @@ ts_lua_add_module(ts_lua_instance_conf *conf, ts_lua_main_ctx *arr, int n, int a
     lua_State       *L;
 
     for (i = 0; i < n; i++) {
+
+        TSMutexLock(arr[i].mutexp);
 
         L = arr[i].lua;
 
@@ -143,8 +147,27 @@ ts_lua_add_module(ts_lua_instance_conf *conf, ts_lua_main_ctx *arr, int n, int a
 
         lua_newtable(L);
         lua_replace(L, LUA_GLOBALSINDEX);               // set empty table to global
+
+        TSMutexUnlock(arr[i].mutexp);
     }
 
+    return 0;
+}
+
+int
+ts_lua_del_module(ts_lua_instance_conf *conf, ts_lua_main_ctx *arr, int n)
+{
+    int     i;
+
+    for (i = 0; i < n; i++) {
+        TSMutexLock(arr[i].mutexp);
+
+        lua_pushlightuserdata(arr[i].lua, conf);
+        lua_pushnil(arr[i].lua);
+        lua_rawset(arr[i].lua, LUA_REGISTRYINDEX);
+
+        TSMutexUnlock(arr[i].mutexp);
+    }
 
     return 0;
 }
